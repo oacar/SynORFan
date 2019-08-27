@@ -6,7 +6,7 @@ from Bio.SeqRecord import SeqRecord
 from bioconductor import find_best_overlap_id
 from bioconductor import count_identical_chars
 
-def pairwise_analyze(path, id):
+def pairwise_analyze(path, id,spec):
     try:
         overlap_aa_file = [s for s in os.listdir(path) if 'AATranslation_overlap_' + str(id) in s][0]
         overlap_aa = AlignIO.read(path + '/' + overlap_aa_file, 'fasta')
@@ -27,6 +27,8 @@ def pairwise_analyze(path, id):
         df = pd.DataFrame()
         length = len(orf_aa[0].seq)
         common_aa = count_identical_chars(overlap_aa[0].seq,overlap_aa[1].seq)
+        df[spec+"_length_"+str(id)] = [length]
+        df[spec+"_common_aa_"+str(id)] = [common_aa]
 
     return 0
 
