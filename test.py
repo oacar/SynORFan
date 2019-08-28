@@ -1,9 +1,12 @@
 import unittest
 from bioconductor import get_frame_mapping
 from bioconductor import union_range, intersect_range, count_identical_chars
+from tmhmm import run_tmhmm
 from Bio.Align import MultipleSeqAlignment
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
+import numpy as np
+
 class MyTestCase(unittest.TestCase):
     def test_get_frame_mapping(self):
         seq = 'A--TTTGGATGGGG-G-GGGCC'
@@ -22,5 +25,12 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(int_range, [4, 8])
     def test_count_identical_chars(self):
         self.assertEqual(count_identical_chars('MTG--GCR','M-G-GGRC'),3)
+
+    def test_run_tmhmm(self):
+        ybr_seq = SeqRecord(Seq('MSRVYIYPLTVFYFFAIEMSVFCYYNWFYRRNFPYLFRPIFPFLIVLISX'), id='YBR')
+        rand_seq = SeqRecord(Seq('MRRRRRMRRRR'), id ='Random')
+
+        self.assertEqual(len(run_tmhmm(rand_seq)),0)
+        np.testing.assert_array_equal(run_tmhmm(ybr_seq),np.array([[6.,28.]]))
 if __name__ == '__main__':
     unittest.main()
