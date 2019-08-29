@@ -1,4 +1,5 @@
 import os
+import argparse
 import re
 import subprocess
 import sys
@@ -79,7 +80,8 @@ def get_subalignment(input_seq, ref_seq_id, smorfSeq, outputDirectory, orf_name,
     start = res.start()
     end = res.end()
 
-    subalign_seq = align[:, start:end + 100]
+    subalign_seq = align[:, start:end]
+
 
     subalign = muscle_align(subalign_seq)
 
@@ -332,7 +334,8 @@ def find_homologs(align, ref_seq_id, ref_range, orf_name, out_path='./'):
             uni_trans = translate_alignment(uni_aln)
             write_pairwise(uni_trans, path + orf_name + '_AATranslation_' + str(u) + '.fa')
             orf_file = open(path + orf_name + '_orf_aa_' + str(u) + '.fa', 'w')
-            SeqIO.write(SeqRecord(align[i][itr[0]:itr[1] + 3].seq.ungap('-').translate(stop_symbol = 'X'), id=align[i].id, description=''), orf_file,
+            SeqIO.write(SeqRecord(align[i][itr[0]:itr[1] + 3].seq.ungap('-').translate(stop_symbol='X'), id=align[i].id,
+                                  description=''), orf_file,
                         'fasta')
             orf_file.close()
 
@@ -380,20 +383,48 @@ def find_best_overlap_id(path):
 
 
 def main():
-    sub = AlignIO.read('data/YBR196C-A/YBR196C-A_subalignment.fa', 'fasta')
+    # sub = AlignIO.read('data/YBR196C-A/YBR196C-A_subalignment.fa', 'fasta')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p', action="store", dest='path', help='Directory path for alignment and output folder',
+                        required=True)
+    parser.add_argument('-n', action="store", dest='orf_name', help='ORF name for output names', required=True)
+    parser.add_argument('-a', action='store_false', dest='is_annotated', help='Is the sequence is annotated?',
+                        default=True)
+    parser.add_argument('-y', action='store', dest='yeast',
+                        help='Fasta file containing dna sequence for annotated yeast genes', required=True)
+    #    parser.add_argument('')
+    res = parser.parse_args()
+    path = res.path
+    orf_name = res.orf_name
+    yeast_fname = res.yeast
+    is_annotated= res.is_annotated
+    #    start = 2754
+    #    end = 2918
 
-    start = 2754
-    end = 2918
-    align = AlignIO.read('data/ybr_deneme/YBR196C-A_alignment_muscle.fa', 'fasta')
+    filename = [s for s in os.listdir(path) if '_alignment.fa' in s][0]
+    # mcl = MuscleCommandline(input='data/ybr_deneme/YBR196C-A_alignment.fa',out = 'data/ybr_deneme/YBR196C-A_alignment_muscle.fa')
+    # find_best_overlap_id('data/ybr_deneme/Spar')
+    if is_annotated:
+        yeast = SeqIO.parse(yeast_fname, 'fasta')
+        for record in yeast:
+            if record.id == orf_name:
+                orf_seq = record.seq
+    else:
+        yeast = SeqIO.parse(yeast_fname, 'fasta')
+        for record in yeast:
+            orf_seq = record.seq
+    start, end = get_subalignment(path + '/' + filename, 0, str(orf_seq),
+                                  path, orf_name)
+    aln_file_name = [s for s in os.listdir(path) if '_alignment_muscle' in s][0]
+    align = AlignIO.read(path + '/' + aln_file_name, 'fasta')
     try:
         ref_seq_id = [i for i, rec in enumerate(align) if rec.id == 'Scer'][0]
     except IndexError:
         print('Reference sequence name is not in the alignment')
-    # find_best_overlap_id('data/ybr_deneme/Spar')
-    start, end = get_subalignment('data/YBR196C-A/YBR196C-A_alignment.fa', ref_seq_id, str(sub[0, :].seq.ungap('-')),
-                                  'data/ybr_deneme', 'YBR196C-A')
-    find_homologs(align=align, ref_seq_id=ref_seq_id, ref_range=[start, end], orf_name='YBR196C-A',
-                  out_path='data/ybr_deneme')
+
+    find_homologs(align=align, ref_seq_id=ref_seq_id, ref_range=[start, end], orf_name=orf_name,
+                  out_path=path)
+    #ss = []
 
 
 if __name__ == '__main__':

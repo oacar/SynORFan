@@ -26,7 +26,7 @@ def run_tmhmm(input_seq):
 
     SeqIO.write(input_seq, child.stdin, 'fasta')
     child.stdin.close()
-    # print(child.stdout.read())o
+    # print(child.stdout.read())ogt
 
     while True:
         line = child.stdout.readline()

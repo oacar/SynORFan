@@ -1,4 +1,5 @@
 import pandas as pd
+import argparse
 import numpy as np
 from Bio import AlignIO
 import os
@@ -6,7 +7,8 @@ from Bio.SeqRecord import SeqRecord
 from bioconductor import find_best_overlap_id
 from bioconductor import count_identical_chars
 
-def pairwise_analyze(path, id,spec):
+
+def pairwise_analyze(path, id):
     try:
         overlap_aa_file = [s for s in os.listdir(path) if 'AATranslation_overlap_' + str(id) in s][0]
         overlap_aa = AlignIO.read(path + '/' + overlap_aa_file, 'fasta')
@@ -18,27 +20,57 @@ def pairwise_analyze(path, id,spec):
 
         union_dna_file = [s for s in os.listdir(path) if 'AATranslation_' + str(id) in s][0]
         union_dna = AlignIO.read(path + '/' + union_dna_file, 'fasta')
-        orf_aa_file = [s for s in os.listdir(path) if 'orf_aa_'+str(id) in s][0]
+        orf_aa_file = [s for s in os.listdir(path) if 'orf_aa_' + str(id) in s][0]
         orf_aa = AlignIO.read(path + '/' + orf_aa_file, 'fasta')
     except (FileNotFoundError, TypeError) as error:
-        raise error
+        return pd.DataFrame()
     else:
         # columns = ['A']
         df = pd.DataFrame()
         length = len(orf_aa[0].seq)
-        common_aa = count_identical_chars(overlap_aa[0].seq,overlap_aa[1].seq)
-        df[spec+"_length_"+str(id)] = [length]
-        df[spec+"_common_aa_"+str(id)] = [common_aa]
+        common_aa = count_identical_chars(overlap_aa[0].seq, overlap_aa[1].seq)
+        df[orf_aa[0].id + "_length_" + str(id)] = [length]
+        df[orf_aa[0].id + "_common_aa_" + str(id)] = [common_aa]
 
-    return 0
+    return df
+
+
+def subalignment_analysis(path, ref_id='Scer'):
+    sub_aa_filename = [s for s in os.listdir(path) if '_AATranslation' in s][0]
+    sub_aa = AlignIO.read(path + '/' + sub_aa_filename, 'fasta')
+    df = pd.DataFrame()
+    for i, record in enumerate(sub_aa):
+        if (record.id == ref_id):
+            continue
+        df[record.id + '_start_codon'] = [record.seq.ungap('-')[0]]
+        df[record.id + '_stop_codon'] = [record.seq.ungap('-')[-1]]
+
+    return df
 
 
 def main():
-    path = 'data/ybr_deneme/'
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p', action="store", dest='path', help='Directory path for alignment and output folder',
+                       required=True)
+    parser.add_argument('-n', action="store", dest='orf_name', help='ORF name for output names', required=True)
+    res = parser.parse_args()
+    path = res.path
+    orf_name = res.orf_name
+   # path = 'data/ybr_deneme/'
+   # orf_name = 'YBR196C-A'
+    df = pd.DataFrame()
+    df['orf_name'] = [orf_name]
+    df = df.join(subalignment_analysis(path))
     pairwise_folders = next(os.walk(path))[1]
     for folder in pairwise_folders:
-        for i in range(int(len(os.listdir('data/ybr_deneme/Sjur')) / 4)):
-            pairwise_analyze(path + '/' + folder + '/', i)
+        df[folder + '_best_id'] = [find_best_overlap_id(path + '/' + folder)]
+        for i in range(int(len(os.listdir(path + '/' + folder)) / 4)):
+            df = df.join(pairwise_analyze(path + '/' + folder + '/', i))
+
+   # return df
+    df.to_csv(path+'/'+orf_name+'_data.csv')
+
+#    subalignment_analysis(path)
 
 
 if __name__ == '__main__':
