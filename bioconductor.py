@@ -1,4 +1,5 @@
 import os
+import argparse
 import re
 import subprocess
 import sys
@@ -68,18 +69,21 @@ def get_subalignment(input_seq, ref_seq_id, smorfSeq, outputDirectory, orf_name,
     else:
         align = muscle_align(input_seqs)
         ref_seq_id = [i for i, rec in enumerate(align) if rec.id == 'Scer'][0]
-    align_file = open(outputDirectory + '/' + orf_name + '_alignment_muscle.fa', 'w')
-    AlignIO.write(align, align_file, 'fasta')
+        align_file = open(outputDirectory + '/' + orf_name + '_alignment_muscle.fa', 'w')
+        AlignIO.write(align, align_file, 'fasta')
 
     # smorf = Seq('ATGTCCCGTG')
 
     re_smorf = re.compile("[-]*".join(smorfSeq))
 
     res = re_smorf.search(str(align[ref_seq_id].seq))
+    if res is None:
+        print(orf_name + ' is not found in alignment')
+        raise ValueError
     start = res.start()
     end = res.end()
 
-    subalign_seq = align[:, start:end + 100]
+    subalign_seq = align[:, start:end]
 
     subalign = muscle_align(subalign_seq)
 
@@ -309,32 +313,46 @@ def find_homologs(align, ref_seq_id, ref_range, orf_name, out_path='./'):
         if oor is None:
             continue
         for u, itr in enumerate(oor):
-            un_range = union_range(itr, ref_range)
-            if itr[0] > ref_range[0]:
-                un_range[0] = get_correct_frame(align[ref_seq_id, :].seq, un_range, ref_range[0])
-            else:
-                un_range[0] = get_correct_frame(align[i, :].seq, un_range, itr[0])
 
-            int_range = intersect_range(itr, ref_range)
-            if itr[0] < ref_range[0]:
-                int_range[0] = get_correct_frame(align[ref_seq_id, :].seq, int_range, ref_range[0])
-            else:
-                int_range[0] = get_correct_frame(align[i, :].seq, int_range, itr[0])
+            try:
+                un_range = union_range(itr, ref_range)
+                if itr[0] > ref_range[0]:
+                    un_range[0] = get_correct_frame(align[ref_seq_id, :].seq, un_range, ref_range[0])
+                else:
+                    un_range[0] = get_correct_frame(align[i, :].seq, un_range, itr[0])
 
-            int_aln = muscle_align(pairwise_aln[:, int_range[0]:int_range[1]])
-            write_pairwise(int_aln, path + orf_name + '_subalignment_overlap_' + str(u) + '.fa')
+                int_range = intersect_range(itr, ref_range)
+                if itr[0] < ref_range[0]:
+                    int_range[0] = get_correct_frame(align[ref_seq_id, :].seq, int_range, ref_range[0])
+                else:
+                    int_range[0] = get_correct_frame(align[i, :].seq, int_range, itr[0])
 
-            int_trans = translate_alignment(int_aln)
-            write_pairwise(int_trans, path + orf_name + '_AATranslation_overlap_' + str(u) + '.fa')
+                int_aln = muscle_align(pairwise_aln[:, int_range[0]:int_range[1]])
+                write_pairwise(int_aln, path + orf_name + '_subalignment_overlap_' + str(u) + '.fa')
 
-            uni_aln = muscle_align(pairwise_aln[:, un_range[0]:un_range[1]])
-            write_pairwise(uni_aln, path + orf_name + '_subalignment_' + str(u) + '.fa')
-            uni_trans = translate_alignment(uni_aln)
-            write_pairwise(uni_trans, path + orf_name + '_AATranslation_' + str(u) + '.fa')
-            orf_file = open(path + orf_name + '_orf_aa_' + str(u) + '.fa', 'w')
-            SeqIO.write(SeqRecord(align[i][itr[0]:itr[1] + 3].seq.ungap('-').translate(stop_symbol = 'X'), id=align[i].id, description=''), orf_file,
-                        'fasta')
-            orf_file.close()
+                int_trans = translate_alignment(int_aln)
+                write_pairwise(int_trans, path + orf_name + '_AATranslation_overlap_' + str(u) + '.fa')
+
+                uni_aln = muscle_align(pairwise_aln[:, un_range[0]:un_range[1]])
+                write_pairwise(uni_aln, path + orf_name + '_subalignment_' + str(u) + '.fa')
+                uni_trans = translate_alignment(uni_aln)
+                write_pairwise(uni_trans, path + orf_name + '_AATranslation_' + str(u) + '.fa')
+                orf_file = open(path + orf_name + '_orf_aa_' + str(u) + '.fa', 'w')
+                SeqIO.write(
+                    SeqRecord(align[i][itr[0]:itr[1] + 3].seq.ungap('-').translate(stop_symbol='X'), id=align[i].id,
+                              description=''), orf_file,
+                    'fasta')
+                orf_file.close()
+            except ValueError:
+                print(orf_name + '_' + spec_name + '_' + str(u) + ' gave error. Removing its files')
+                if os.path.exists(path + orf_name + '_subalignment_overlap_' + str(u) + '.fa'):
+                    os.remove(path + orf_name + '_subalignment_overlap_' + str(u) + '.fa')
+                if os.path.exists(path + orf_name + '_AATranslation_overlap_' + str(u) + '.fa'):
+                    os.remove(path + orf_name + '_AATranslation_overlap_' + str(u) + '.fa')
+                if os.path.exists(path + orf_name + '_subalignment_' + str(u) + '.fa'):
+                    os.remove(path + orf_name + '_subalignment_' + str(u) + '.fa')
+                if os.path.exists(path + orf_name + '_AATranslation_' + str(u) + '.fa'):
+                    os.remove(path + orf_name + '_AATranslation_' + str(u) + '.fa')
 
 
 def count_identical_chars(seq1, seq2):
@@ -368,10 +386,13 @@ def find_best_overlap_id(path):
         best = None
         best_count = 0
         if len(file_name) == 0 or len(file_name) == 1:
-            return 0
+            return None
         else:
             for i in range(len(file_name)):
                 aln = AlignIO.read(path + '/' + file_name[i], 'fasta')
+                if len(aln) == 1 or len(aln) == 0:
+                    print(path + '/' + file_name[i] + ' has no or alignment ')
+                    continue
                 count = count_identical_chars(aln[0].seq, aln[1].seq)
                 if count > best_count:
                     best_count = count
@@ -380,20 +401,56 @@ def find_best_overlap_id(path):
 
 
 def main():
-    sub = AlignIO.read('data/YBR196C-A/YBR196C-A_subalignment.fa', 'fasta')
+    # sub = AlignIO.read('data/YBR196C-A/YBR196C-A_subalignment.fa', 'fasta')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p', action="store", dest='path', help='Directory path for alignment and output folder',
+                        required=True)
+    parser.add_argument('-n', action="store", dest='orf_name', help='ORF name for output names', required=True)
+    parser.add_argument('-a', action='store_false', dest='is_annotated', help='Is the sequence is annotated?',
+                        default=True)
+    parser.add_argument('-y', action='store', dest='yeast',
+                        help='Fasta file containing dna sequence for annotated yeast genes', required=True)
+    #    parser.add_argument('')
+    res = parser.parse_args()
+    path = res.path
+    orf_name = res.orf_name
+    yeast_fname = res.yeast
+    is_annotated = res.is_annotated
+    #    start = 2754
+    #    end = 2918
 
-    start = 2754
-    end = 2918
-    align = AlignIO.read('data/ybr_deneme/YBR196C-A_alignment_muscle.fa', 'fasta')
+    #        path = 'data/pgs/YLL059C_2/'
+    #        orf_name = 'YLL059C'
+    #        yeast_fname = 'data/orf_genomic_all.fasta'
+    #        is_annotated = True
+    filename = [s for s in os.listdir(path) if '_alignment.fa' in s][0]
+    # mcl = MuscleCommandline(input='data/ybr_deneme/YBR196C-A_alignment.fa',out = 'data/ybr_deneme/YBR196C-A_alignment_muscle.fa')
+    # find_best_overlap_id('data/ybr_deneme/Spar')
+    orf_seq = None
+    if is_annotated:
+        yeast = SeqIO.parse(yeast_fname, 'fasta')
+        for record in yeast:
+            if record.id == orf_name:
+                orf_seq = record.seq
+        if orf_seq is None:
+            print(orf_name + ' is not found in ' + yeast_fname)
+            return (0)
+    else:
+        yeast = SeqIO.parse(yeast_fname, 'fasta')
+        for record in yeast:
+            orf_seq = record.seq
+    start, end = get_subalignment(path + '/' + filename, 0, str(orf_seq),
+                                  path, orf_name)
+    aln_file_name = [s for s in os.listdir(path) if '_alignment_muscle' in s][0]
+    align = AlignIO.read(path + '/' + aln_file_name, 'fasta')
     try:
         ref_seq_id = [i for i, rec in enumerate(align) if rec.id == 'Scer'][0]
     except IndexError:
         print('Reference sequence name is not in the alignment')
-    # find_best_overlap_id('data/ybr_deneme/Spar')
-    start, end = get_subalignment('data/YBR196C-A/YBR196C-A_alignment.fa', ref_seq_id, str(sub[0, :].seq.ungap('-')),
-                                  'data/ybr_deneme', 'YBR196C-A')
-    find_homologs(align=align, ref_seq_id=ref_seq_id, ref_range=[start, end], orf_name='YBR196C-A',
-                  out_path='data/ybr_deneme')
+
+    find_homologs(align=align, ref_seq_id=ref_seq_id, ref_range=[start, end], orf_name=orf_name,
+                  out_path=path)
+    # ss = []
 
 
 if __name__ == '__main__':
