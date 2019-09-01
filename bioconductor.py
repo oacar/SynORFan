@@ -10,6 +10,9 @@ from Bio import SeqIO
 from Bio.Align import MultipleSeqAlignment
 from Bio.Align.Applications import MuscleCommandline
 from Bio.SeqRecord import SeqRecord
+import analysis 
+
+
 
 
 def muscle_align(input_seq):
@@ -338,6 +341,8 @@ def find_homologs(align, ref_seq_id, ref_range, orf_name, out_path='./'):
                 uni_trans = translate_alignment(uni_aln)
                 write_pairwise(uni_trans, path + orf_name + '_AATranslation_' + str(u) + '.fa')
                 orf_file = open(path + orf_name + '_orf_aa_' + str(u) + '.fa', 'w')
+                if len(int_trans) == 1 or len(int_aln) == 1 or len(uni_trans) == 1 or len(uni_aln) == 1:
+                    raise ValueError
                 SeqIO.write(
                     SeqRecord(align[i][itr[0]:itr[1] + 3].seq.ungap('-').translate(stop_symbol='X'), id=align[i].id,
                               description=''), orf_file,
@@ -353,7 +358,8 @@ def find_homologs(align, ref_seq_id, ref_range, orf_name, out_path='./'):
                     os.remove(path + orf_name + '_subalignment_' + str(u) + '.fa')
                 if os.path.exists(path + orf_name + '_AATranslation_' + str(u) + '.fa'):
                     os.remove(path + orf_name + '_AATranslation_' + str(u) + '.fa')
-
+                if os.path.exists(path + orf_name + '_orf_aa_' + str(u)+'.fa'):
+                    os.remove(path + orf_name + '_orf_aa_' + str(u) + '.fa')
 
 def count_identical_chars(seq1, seq2):
     """
@@ -391,7 +397,7 @@ def find_best_overlap_id(path):
             for i in range(len(file_name)):
                 aln = AlignIO.read(path + '/' + file_name[i], 'fasta')
                 if len(aln) == 1 or len(aln) == 0:
-                    print(path + '/' + file_name[i] + ' has no or alignment ')
+                    print(path + '/' + file_name[i] + ' has no alignment ')
                     continue
                 count = count_identical_chars(aln[0].seq, aln[1].seq)
                 if count > best_count:
@@ -400,22 +406,8 @@ def find_best_overlap_id(path):
             return best
 
 
-def main():
-    # sub = AlignIO.read('data/YBR196C-A/YBR196C-A_subalignment.fa', 'fasta')
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-p', action="store", dest='path', help='Directory path for alignment and output folder',
-                        required=True)
-    parser.add_argument('-n', action="store", dest='orf_name', help='ORF name for output names', required=True)
-    parser.add_argument('-a', action='store_false', dest='is_annotated', help='Is the sequence is annotated?',
-                        default=True)
-    parser.add_argument('-y', action='store', dest='yeast',
-                        help='Fasta file containing dna sequence for annotated yeast genes', required=True)
-    #    parser.add_argument('')
-    res = parser.parse_args()
-    path = res.path
-    orf_name = res.orf_name
-    yeast_fname = res.yeast
-    is_annotated = res.is_annotated
+def main(path, orf_name, yeast_fname, is_annotated):
+    print(orf_name)
     #    start = 2754
     #    end = 2918
 
@@ -454,4 +446,22 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    # sub = AlignIO.read('data/YBR196C-A/YBR196C-A_subalignment.fa', 'fasta')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p', action="store", dest='path', help='Directory path for alignment and output folder',
+                        required=True)
+    parser.add_argument('-n', action="store", dest='orf_name', help='ORF name for output names', required=True)
+    parser.add_argument('-a', action='store_false', dest='is_annotated', help='Is the sequence is annotated?',
+                        default=True)
+    parser.add_argument('-y', action='store', dest='yeast',
+                        help='Fasta file containing dna sequence for annotated yeast genes', required=True)
+    #    parser.add_argument('')
+    res = parser.parse_args()
+    path = res.path
+    orf_name = res.orf_name
+    yeast_fname = res.yeast
+    is_annotated = res.is_annotated
+
+    main(path, orf_name, yeast_fname, is_annotated)
+    analysis.main(path, orf_name)
+    #main('data/pgs/YOR314W/', 'YOR314W', 'data/orf_genomic_all.fasta', True)

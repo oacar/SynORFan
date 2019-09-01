@@ -79,13 +79,13 @@ def main(path, orf_name):
 
 
 if __name__ == '__main__':
-    #parser = argparse.ArgumentParser()
-    #parser.add_argument('-p', action="store", dest='path', help='Directory path for alignment and output folder',
-    #                    required=True)
-    #parser.add_argument('-n', action="store", dest='orf_name', help='ORF name for output names', required=True)
-    #res = parser.parse_args()
-    #path = res.path
-    #orf_name = res.orf_name
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p', action="store", dest='path', help='Directory path for alignment and output folder',
+                        required=True)
+    parser.add_argument('-n', action="store", dest='orf_name', help='ORF name for output names', required=True)
+    res = parser.parse_args()
+    path = res.path
+    orf_name = res.orf_name
 
-    #main(path, orf_name)
-    main('data/pgs/YOR314W/','YOR314W')
+    main(path, orf_name)
+    # main('data/pgs/YOR314W/', 'YOR314W')
