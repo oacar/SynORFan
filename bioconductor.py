@@ -10,9 +10,7 @@ from Bio import SeqIO
 from Bio.Align import MultipleSeqAlignment
 from Bio.Align.Applications import MuscleCommandline
 from Bio.SeqRecord import SeqRecord
-import analysis 
-
-
+import analysis
 
 
 def muscle_align(input_seq):
@@ -54,7 +52,7 @@ def translate_alignment(aln):
     return aa_translation
 
 
-def get_subalignment(input_seq, ref_seq_id, smorfSeq, outputDirectory, orf_name, is_aligned=False):
+def get_subalignment(input_seq, smorfSeq, outputDirectory, orf_name, is_aligned=False):
     """
     This function takes a series of sequences, aligns them and finds a sequence on the reference sequences.
     Then extracts subalignment and translate it. Saves these files.
@@ -66,10 +64,13 @@ def get_subalignment(input_seq, ref_seq_id, smorfSeq, outputDirectory, orf_name,
     :param is_aligned: boolean, shows whether input_seq is already aligned or not
     :return: integers, start and end positions of smorfSeq on the alignment.
     """
-    input_seqs = SeqIO.parse(input_seq, 'fasta')
     if is_aligned:
+        input_seqs = AlignIO.read(input_seq, 'fasta')
         align = input_seqs
+        ref_seq_id = [i for i, rec in enumerate(align) if rec.id == 'Scer'][0]
+
     else:
+        input_seqs = SeqIO.parse(input_seq, 'fasta')
         align = muscle_align(input_seqs)
         ref_seq_id = [i for i, rec in enumerate(align) if rec.id == 'Scer'][0]
         align_file = open(outputDirectory + '/' + orf_name + '_alignment_muscle.fa', 'w')
@@ -193,9 +194,9 @@ def exclude_shorter_orfs(gapped, oor):
     for i in range(len(oor)):
         start_ = oor[i, 0]
         end_ = oor[i, 1]
-        sub_gapped = gapped[start_:(end_ + 3)]
+        sub_gapped = gapped[start_:end_]
         tr_seq = sub_gapped.seq.ungap('-').translate()
-        if tr_seq.find('*') == len(tr_seq) - 1:
+        if tr_seq.find('*') == - 1:
             good_oor.append(i)
 
     selected = oor[good_oor]
@@ -319,24 +320,39 @@ def find_homologs(align, ref_seq_id, ref_range, orf_name, out_path='./'):
 
             try:
                 un_range = union_range(itr, ref_range)
-                if itr[0] > ref_range[0]:
-                    un_range[0] = get_correct_frame(align[ref_seq_id, :].seq, un_range, ref_range[0])
+                # correct for translation frames so that when translated reference orf has original aa sequence
+                # create 2 range values one for the the original range calculated by union_range or intersect_range
+                # and the other for frame correction
+
+                if itr[0] < ref_range[0]:
+                    new_un_range_start = get_correct_frame(align[ref_seq_id, :].seq, un_range, ref_range[0])
+                    un_range = np.append([un_range], [[new_un_range_start, un_range[1]]], axis=0)
+                elif itr[0] > ref_range[0]:
+                    new_un_range_start = get_correct_frame(align[i, :].seq, un_range, itr[0])
+                    un_range = np.append([[new_un_range_start, un_range[1]]], [un_range], axis=0)
                 else:
-                    un_range[0] = get_correct_frame(align[i, :].seq, un_range, itr[0])
+                    un_range = np.append([un_range], [un_range], axis=0)
 
                 int_range = intersect_range(itr, ref_range)
-                if itr[0] < ref_range[0]:
-                    int_range[0] = get_correct_frame(align[ref_seq_id, :].seq, int_range, ref_range[0])
+                if itr[0] > ref_range[0]:
+                    new_int_range_start = get_correct_frame(align[ref_seq_id, :].seq, int_range, ref_range[0])
+                    int_range = np.append([int_range], [[new_int_range_start, int_range[1]]], axis=0)
+                elif itr[0] < ref_range[0]:
+                    new_int_range_start = get_correct_frame(align[i, :].seq, int_range, itr[0])
+                    int_range = np.append([[new_int_range_start, int_range[1]]], [int_range], axis=0)
                 else:
-                    int_range[0] = get_correct_frame(align[i, :].seq, int_range, itr[0])
-
-                int_aln = muscle_align(pairwise_aln[:, int_range[0]:int_range[1]])
+                    int_range = np.append([int_range], [int_range], axis=0)
+                int_aln_seqrecords = [pairwise_aln[0, int_range[0][0]:int_range[0][1]],
+                                      pairwise_aln[1, int_range[1][0]:int_range[1][1]]]
+                int_aln = muscle_align(int_aln_seqrecords)
                 write_pairwise(int_aln, path + orf_name + '_subalignment_overlap_' + str(u) + '.fa')
 
                 int_trans = translate_alignment(int_aln)
                 write_pairwise(int_trans, path + orf_name + '_AATranslation_overlap_' + str(u) + '.fa')
 
-                uni_aln = muscle_align(pairwise_aln[:, un_range[0]:un_range[1]])
+                uni_aln_seqrecords = [pairwise_aln[0, un_range[0][0]:un_range[0][1]],
+                                      pairwise_aln[1, un_range[1][0]:un_range[1][1]]]
+                uni_aln = muscle_align(uni_aln_seqrecords)
                 write_pairwise(uni_aln, path + orf_name + '_subalignment_' + str(u) + '.fa')
                 uni_trans = translate_alignment(uni_aln)
                 write_pairwise(uni_trans, path + orf_name + '_AATranslation_' + str(u) + '.fa')
@@ -344,7 +360,7 @@ def find_homologs(align, ref_seq_id, ref_range, orf_name, out_path='./'):
                 if len(int_trans) == 1 or len(int_aln) == 1 or len(uni_trans) == 1 or len(uni_aln) == 1:
                     raise ValueError
                 SeqIO.write(
-                    SeqRecord(align[i][itr[0]:itr[1] + 3].seq.ungap('-').translate(stop_symbol='X'), id=align[i].id,
+                    SeqRecord(align[i][itr[0]:itr[1]].seq.ungap('-').translate(stop_symbol='X'), id=align[i].id,
                               description=''), orf_file,
                     'fasta')
                 orf_file.close()
@@ -358,55 +374,11 @@ def find_homologs(align, ref_seq_id, ref_range, orf_name, out_path='./'):
                     os.remove(path + orf_name + '_subalignment_' + str(u) + '.fa')
                 if os.path.exists(path + orf_name + '_AATranslation_' + str(u) + '.fa'):
                     os.remove(path + orf_name + '_AATranslation_' + str(u) + '.fa')
-                if os.path.exists(path + orf_name + '_orf_aa_' + str(u)+'.fa'):
+                if os.path.exists(path + orf_name + '_orf_aa_' + str(u) + '.fa'):
                     os.remove(path + orf_name + '_orf_aa_' + str(u) + '.fa')
 
-def count_identical_chars(seq1, seq2):
-    """
-    Calculate identical characters between two sequences
-    :param seq1: string or Bio.Seq object
-    :param seq2: string or Bio.Seq object
-    :return: int, number of identical characters
-    """
-    count = 0
-    for i in range(len(seq1)):
-        if seq1[i] == '-' and seq2[i] == '-':
-            continue
-        elif seq1[i] == seq2[i]:
-            count += 1
-    return count
 
-
-def find_best_overlap_id(path):
-    """
-    This function read overlapping orf files that were written by find_homologs function and decides which is the best
-    overlapping orf pair with highest number of identical amino acid pairs
-    :param path: string, path which contains the overlapping protein files
-    :return: identifier for best overlapping pair
-    """
-    try:
-        file_name = [s for s in os.listdir(path) if 'AATranslation_overlap' in s]
-    except FileNotFoundError:
-        print("%s is not found" % path)
-    else:
-        best = None
-        best_count = 0
-        if len(file_name) == 0 or len(file_name) == 1:
-            return None
-        else:
-            for i in range(len(file_name)):
-                aln = AlignIO.read(path + '/' + file_name[i], 'fasta')
-                if len(aln) == 1 or len(aln) == 0:
-                    print(path + '/' + file_name[i] + ' has no alignment ')
-                    continue
-                count = count_identical_chars(aln[0].seq, aln[1].seq)
-                if count > best_count:
-                    best_count = count
-                    best = i
-            return best
-
-
-def main(path, orf_name, yeast_fname, is_annotated):
+def main(path, orf_name, yeast_fname, is_annotated, is_aligned):
     print(orf_name)
     #    start = 2754
     #    end = 2918
@@ -415,7 +387,10 @@ def main(path, orf_name, yeast_fname, is_annotated):
     #        orf_name = 'YLL059C'
     #        yeast_fname = 'data/orf_genomic_all.fasta'
     #        is_annotated = True
-    filename = [s for s in os.listdir(path) if '_alignment.fa' in s][0]
+    if is_aligned:
+        filename = [s for s in os.listdir(path) if 'muscle.fa' in s][0]
+    else:
+        filename = [s for s in os.listdir(path) if '_alignment.fa' in s][0]
     # mcl = MuscleCommandline(input='data/ybr_deneme/YBR196C-A_alignment.fa',out = 'data/ybr_deneme/YBR196C-A_alignment_muscle.fa')
     # find_best_overlap_id('data/ybr_deneme/Spar')
     orf_seq = None
@@ -431,8 +406,8 @@ def main(path, orf_name, yeast_fname, is_annotated):
         yeast = SeqIO.parse(yeast_fname, 'fasta')
         for record in yeast:
             orf_seq = record.seq
-    start, end = get_subalignment(path + '/' + filename, 0, str(orf_seq),
-                                  path, orf_name)
+    start, end = get_subalignment(path + '/' + filename, str(orf_seq),
+                                  path, orf_name, is_aligned=is_aligned)
     aln_file_name = [s for s in os.listdir(path) if '_alignment_muscle' in s][0]
     align = AlignIO.read(path + '/' + aln_file_name, 'fasta')
     try:
@@ -455,13 +430,15 @@ if __name__ == '__main__':
                         default=True)
     parser.add_argument('-y', action='store', dest='yeast',
                         help='Fasta file containing dna sequence for annotated yeast genes', required=True)
+    parser.add_argument('-m', action='store_true', dest='is_aligned')
     #    parser.add_argument('')
     res = parser.parse_args()
     path = res.path
     orf_name = res.orf_name
     yeast_fname = res.yeast
     is_annotated = res.is_annotated
-
-    main(path, orf_name, yeast_fname, is_annotated)
-    analysis.main(path, orf_name)
-    #main('data/pgs/YOR314W/', 'YOR314W', 'data/orf_genomic_all.fasta', True)
+    is_aligned = res.is_aligned
+    main(path, orf_name, yeast_fname, is_annotated, is_aligned)
+    analysis.main(path, orf_name, yeast_fname, is_annotated)
+    #main('data/gene/YLR218C/', 'YLR218C', 'data/orf_genomic_all.fasta', True, True)
+    # analysis.main('data/nongene/7_508763_508927_0/', '7_508763_508927_0')
