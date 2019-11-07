@@ -12,5 +12,6 @@ then
 else
     python ../../../bioconductor.py -p $i -n $name -y ../../orf_genomic_all.fasta -ap
 fi
+
 #python ../../analysis.py -p $i -n $name
 done;

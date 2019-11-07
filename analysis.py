@@ -104,8 +104,8 @@ def subalignment_analysis(path, align_pairwise, ref_id='Scer'):
             df[record.id + '_start_codon'] = [record.seq.ungap('-')[0]]
             df[record.id + '_stop_codon'] = [record.seq.ungap('-')[-1]]
 
-    return df
 
+    return df
 
 def subalignment_dna_id(path, align_pairwise, ref_id='Scer'):
     if align_pairwise:
@@ -130,6 +130,7 @@ def subalignment_dna_id(path, align_pairwise, ref_id='Scer'):
             identical_chars = count_identical_chars(record.seq, sub_dna[ref_seq_id].seq)
             df[record.id + '_dna_identity'] = [identical_chars / len(sub_dna[ref_seq_id].seq.ungap('-'))]
 
+
     return df
 
 
@@ -140,6 +141,7 @@ def main(path, orf_name, yeast_fname, is_annotated, align_pairwise):
     df['orf_name'] = [orf_name]
     df = df.join(subalignment_analysis(path, align_pairwise))
     df = df.join(subalignment_dna_id(path, align_pairwise))
+
     if is_annotated:
         yeast = SeqIO.parse(yeast_fname, 'fasta')
         for record in yeast:
@@ -184,6 +186,7 @@ if __name__ == '__main__':
     parser.add_argument('-y', action='store', dest='yeast',
                         help='Fasta file containing dna sequence for annotated yeast genes', required=True)
     parser.add_argument('-ap', action='store_true', dest='align_pairwise')
+
     res = parser.parse_args()
     path = res.path
     orf_name = res.orf_name
@@ -191,4 +194,5 @@ if __name__ == '__main__':
     is_annotated = res.is_annotated
     align_pairwise = res.align_pairwise
     main(path, orf_name, yeast_fname, is_annotated, align_pairwise)
+
     # main('data/pgs/YOR314W/', 'YOR314W')

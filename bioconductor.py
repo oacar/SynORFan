@@ -34,6 +34,7 @@ def mafft_align(input_seq):
     return aligned_seq
 
 
+
 def muscle_align(input_seq):
     """
     This function uses muscle to align the input_seq whether it is dna or protein sequence
@@ -100,6 +101,7 @@ def get_subalignment(input_seq, smorfSeq, outputDirectory, orf_name, is_aligned=
     else:
         input_seqs = input_seq
         align = mafft_align(input_seqs)
+
         ref_seq_id = [i for i, rec in enumerate(align) if rec.id == 'Scer'][0]
         other_name = [rec.id for rec in align if rec.id != 'Scer'][0]
         align_file = open(outputDirectory + '/' + orf_name + '_alignment_' + other_name + '.fa', 'w')
@@ -281,6 +283,7 @@ def exclude_shorter_orfs(gapped, oor):
         selected[i, :] = shorthest
 
     # selected = oor[good_oor]
+
     # print(selected)
     # longer_oor = np.array([])
     xx = []
@@ -432,6 +435,7 @@ def find_homologs(align, ref_seq_id, ref_range, orf_name, out_path='./'):
 
             try:
                 un_range = union_range(itr, new_ref_range)
+
                 # correct for translation frames so that when translated reference orf has original aa sequence
                 # create 2 range values one for the the original range calculated by union_range or intersect_range
                 # and the other for frame correction
@@ -457,6 +461,7 @@ def find_homologs(align, ref_seq_id, ref_range, orf_name, out_path='./'):
                 int_aln_seqrecords = [align[0, int_range[0][0]:int_range[0][1]],
                                       align[1, int_range[1][0]:int_range[1][1]]]
                 int_aln = mafft_align(int_aln_seqrecords)
+
                 write_pairwise(int_aln, path + orf_name + '_subalignment_overlap_' + str(u) + '.fa')
 
                 int_trans = translate_alignment(int_aln)
@@ -465,6 +470,7 @@ def find_homologs(align, ref_seq_id, ref_range, orf_name, out_path='./'):
                 uni_aln_seqrecords = [align[0, un_range[0][0]:un_range[0][1]],
                                       align[1, un_range[1][0]:un_range[1][1]]]
                 uni_aln = mafft_align(uni_aln_seqrecords)
+
                 write_pairwise(uni_aln, path + orf_name + '_subalignment_' + str(u) + '.fa')
                 uni_trans = translate_alignment(uni_aln)
                 write_pairwise(uni_trans, path + orf_name + '_AATranslation_' + str(u) + '.fa')
@@ -491,6 +497,7 @@ def find_homologs(align, ref_seq_id, ref_range, orf_name, out_path='./'):
 
 
 def main(path, orf_name, yeast_fname, is_annotated, is_aligned, align_pairwise):
+
     print(orf_name)
     #    start = 2754
     #    end = 2918
@@ -543,6 +550,7 @@ def main(path, orf_name, yeast_fname, is_annotated, is_aligned, align_pairwise):
             except IndexError:
                 print('Reference sequence name is not in the alignment')
 
+
             find_homologs(align=align, ref_seq_id=ref_seq_id, ref_range=[start, end], orf_name=orf_name,
                           out_path=path)
     else:
@@ -571,6 +579,7 @@ if __name__ == '__main__':
                         help='Fasta file containing dna sequence for annotated yeast genes', required=True)
     parser.add_argument('-m', action='store_true', dest='is_aligned', help='is the input alignment is already aligned?')
     parser.add_argument('-ap', action='store_true', dest='align_pairwise', help='Use only pairwise alignments for faster analysis.')
+
     #    parser.add_argument('')
     res = parser.parse_args()
     path = res.path
@@ -586,3 +595,4 @@ if __name__ == '__main__':
 
     #main('data/YBR196C-A/', 'YBR196C-A', 'data/orf_genomic_all.fasta', True, False, True)
     # analysis.main('data/YAL067C/', 'YAL067C','data/orf_genomic_all.fasta',True,True)
+
