@@ -15,7 +15,18 @@ from Bio.SeqRecord import SeqRecord
 import analysis
 
 
-def mafft_align(input_seq):
+def align_sequences(input_seq, **kwargs):
+    algorithm = kwargs.pop('algorithm')
+    #print(algorithm)
+    if algorithm=='mafft':
+        aln = mafft_align(input_seq)
+    elif algorithm=='muscle':
+        aln = muscle_align(input_seq)
+    else:
+        raise ValueError('Wrong algorithm given. Use only mafft or muscle')
+
+    return aln
+def mafft_align(input_seq,**kwargs):
     """
     this uses mafft for alignment
     :param input_seq:
@@ -35,7 +46,7 @@ def mafft_align(input_seq):
 
 
 
-def muscle_align(input_seq):
+def muscle_align(input_seq,**kwargs):
     """
     This function uses muscle to align the input_seq whether it is dna or protein sequence
     using stdin and stdout. It does not write any output to file
@@ -57,24 +68,25 @@ def muscle_align(input_seq):
     return (aligned_seq)
 
 
-def translate_alignment(aln):
+def translate_alignment(aln,**kwargs):
     """
     This function takes a dna sequence alignment (Bio.Align object)
     for every sequence in this alignment, removes '-' characters and translate.
     Stop codon is represented by 'X'
-    Then this alignment is being aligned using mafft_align
+    Then this alignment is being aligned using align_sequences
     :param aln: Bio.Align object
     :return: aligned aa_translation as Bio.Align object
     """
+    
     aa_recs = []
     for rec in aln:
         # print(rec.id)
         aa_recs.append(SeqRecord(rec.seq.ungap('-').translate(stop_symbol='X'), id=str(rec.id), description=''))
-    aa_translation = mafft_align(aa_recs)  # AlignIO.read(child.stdout,'fasta')
+    aa_translation = align_sequences(aa_recs, **kwargs)  # AlignIO.read(child.stdout,'fasta')
     return aa_translation
 
 
-def get_subalignment(input_seq, smorfSeq, outputDirectory, orf_name, is_aligned=False):
+def get_subalignment(input_seq, smorfSeq, outputDirectory, orf_name, is_aligned=False,**kwargs):
     """
     This function takes a series of sequences, aligns them and finds a sequence on the reference sequences.
     Then extracts subalignment and translate it. Saves these files.
@@ -94,13 +106,13 @@ def get_subalignment(input_seq, smorfSeq, outputDirectory, orf_name, is_aligned=
 
         else:
             input_seqs = SeqIO.parse(input_seq, 'fasta')
-            align = mafft_align(input_seqs)
+            align = align_sequences(input_seqs,**kwargs)
             ref_seq_id = [i for i, rec in enumerate(align) if rec.id == 'Scer'][0]
             align_file = open(outputDirectory + '/' + orf_name + '_alignment_muscle.fa', 'w')
             AlignIO.write(align, align_file, 'fasta')
     else:
         input_seqs = input_seq
-        align = mafft_align(input_seqs)
+        align = align_sequences(input_seqs, **kwargs)
 
         ref_seq_id = [i for i, rec in enumerate(align) if rec.id == 'Scer'][0]
         other_name = [rec.id for rec in align if rec.id != 'Scer'][0]
@@ -120,9 +132,9 @@ def get_subalignment(input_seq, smorfSeq, outputDirectory, orf_name, is_aligned=
     if isinstance(input_seq, str):
         subalign_seq = align[:, start:end]
 
-        subalign = mafft_align(subalign_seq)
+        subalign = align_sequences(subalign_seq, **kwargs)
 
-        aa_translation = translate_alignment(subalign)
+        aa_translation = translate_alignment(subalign,**kwargs)
 
         subalign_file = open(outputDirectory + '/' + orf_name + '_subalignment.fa', 'w')
         AlignIO.write(subalign, subalign_file, 'fasta')
@@ -132,7 +144,7 @@ def get_subalignment(input_seq, smorfSeq, outputDirectory, orf_name, is_aligned=
         if sub_extended:
             subalign_seq = align[:, max(start - 1000, 0):min(end + 1000, len(align[0]))]
 
-            subalign = mafft_align(subalign_seq)
+            subalign = align_sequences(subalign_seq, **kwargs)
 
             subalign_file = open(outputDirectory + '/' + orf_name + '_subalignment_extended.fa', 'w')
             AlignIO.write(subalign, subalign_file, 'fasta')
@@ -145,9 +157,9 @@ def get_subalignment(input_seq, smorfSeq, outputDirectory, orf_name, is_aligned=
     else:
         subalign_seq = align[:, start:end]
 
-        subalign = mafft_align(subalign_seq)
+        subalign = align_sequences(subalign_seq, **kwargs)
 
-        aa_translation = translate_alignment(subalign)
+        aa_translation = translate_alignment(subalign, **kwargs)
 
         subalign_file = open(outputDirectory + '/' + orf_name + '_subalignment_' + other_name + '.fa', 'w')
         AlignIO.write(subalign, subalign_file, 'fasta')
@@ -157,7 +169,7 @@ def get_subalignment(input_seq, smorfSeq, outputDirectory, orf_name, is_aligned=
         if sub_extended:
             subalign_seq = align[:, max(start - 1000, 0):min(end + 2000, len(align[0]))]
 
-            subalign = mafft_align(subalign_seq)
+            subalign = align_sequences(subalign_seq, **kwargs)
 
             subalign_file = open(outputDirectory + '/' + orf_name + '_subalignment_extended_'+other_name+'.fa', 'w')
             AlignIO.write(subalign, subalign_file, 'fasta')
@@ -170,7 +182,7 @@ def get_subalignment(input_seq, smorfSeq, outputDirectory, orf_name, is_aligned=
     return (start, end)
 
 
-def map_aln_to_seq(gapped):
+def map_aln_to_seq(gapped,**kwargs):
     """
     This function maps positions of regular sequence to aligned, gap containing sequence
     :param gapped: Bio.Seq object. sequence which contains gaps as '-' characters
@@ -192,7 +204,7 @@ def map_aln_to_seq(gapped):
     return map_ungapped_gapped
 
 
-def find_orfs(seq, startCodons=['ATG'], stopCodons=['TAA', 'TAG', 'TGA']):
+def find_orfs(seq, startCodons=['ATG'], stopCodons=['TAA', 'TAG', 'TGA'],**kwargs):
     """
     This function finds open reading frames in seq
     :param seq: Bio.Seq object or string, without gaps
@@ -207,7 +219,7 @@ def find_orfs(seq, startCodons=['ATG'], stopCodons=['TAA', 'TAG', 'TGA']):
     return orf_start_stop
 
 
-def do_ranges_overlap(l1, l2):
+def do_ranges_overlap(l1, l2,**kwargs):
     """
     This function returns a boolean if 2 ranges given by [start,stop] overlaps
     :param l1: range 1, [start1, stop1]
@@ -220,7 +232,7 @@ def do_ranges_overlap(l1, l2):
         return False
 
 
-def find_overlapping_orf_ranges(gapped, ref_start, ref_stop):
+def find_overlapping_orf_ranges(gapped, ref_start, ref_stop,**kwargs):
     """
     This function finds open reading frames which has an overlap with the range [ref_start, ref_stop]
     :param gapped: Bio.Seq object with gapped sequence
@@ -252,7 +264,7 @@ def find_overlapping_orf_ranges(gapped, ref_start, ref_stop):
         return None
 
 
-def exclude_shorter_orfs(gapped, oor):
+def exclude_shorter_orfs(gapped, oor,**kwargs):
     """
     Name is a little less than what this function actually does.
     This function checks whether the orfs on gapped sequence given by oor np.array files contain
@@ -298,7 +310,7 @@ def exclude_shorter_orfs(gapped, oor):
     return longer_oor
 
 
-def get_frame_mapping(gapped, start):
+def get_frame_mapping(gapped, start,**kwargs):
     """
     This function finds translation frame positions with respect to start
     :param gapped: Bio.Seq object
@@ -319,7 +331,7 @@ def get_frame_mapping(gapped, start):
     return frame_mapping
 
 
-def get_correct_frame(gapped, range, start):
+def get_correct_frame(gapped, range, start,**kwargs):
     frame_mapping = get_frame_mapping(gapped, start)
 
     range_start = range[0]
@@ -354,7 +366,7 @@ def get_correct_frame(gapped, range, start):
     return range_start
 
 
-def union_range(range1, range2):
+def union_range(range1, range2,**kwargs):
     """
 
     :param range1:
@@ -367,7 +379,7 @@ def union_range(range1, range2):
     return [start, end]
 
 
-def intersect_range(range1, range2):
+def intersect_range(range1, range2,**kwargs):
     """
 
     :param range1:
@@ -380,7 +392,7 @@ def intersect_range(range1, range2):
     return [start, end]
 
 
-def write_pairwise(aln, filename):
+def write_pairwise(aln, filename,**kwargs):
     """
     wrapper function for writing aln to filename
     :param aln: Bio.Align object
@@ -392,7 +404,7 @@ def write_pairwise(aln, filename):
     aln_file.close()
 
 
-def find_homologs(align, ref_seq_id, ref_range, orf_name, out_path='./'):
+def find_homologs(align, ref_seq_id, ref_range, orf_name, out_path='./',**kwargs):
     """
     This function uses a multiple sequence alignment and finds orfs in all species except ref_seq_id
     which has overlaps with ref_range. Then it saves the pairwise alignment file that contains union and intersection of
@@ -460,19 +472,19 @@ def find_homologs(align, ref_seq_id, ref_range, orf_name, out_path='./'):
                     int_range = np.append([int_range], [int_range], axis=0)
                 int_aln_seqrecords = [align[0, int_range[0][0]:int_range[0][1]],
                                       align[1, int_range[1][0]:int_range[1][1]]]
-                int_aln = mafft_align(int_aln_seqrecords)
+                int_aln = align_sequences(int_aln_seqrecords, **kwargs)
 
                 write_pairwise(int_aln, path + orf_name + '_subalignment_overlap_' + str(u) + '.fa')
 
-                int_trans = translate_alignment(int_aln)
+                int_trans = translate_alignment(int_aln, **kwargs)
                 write_pairwise(int_trans, path + orf_name + '_AATranslation_overlap_' + str(u) + '.fa')
 
                 uni_aln_seqrecords = [align[0, un_range[0][0]:un_range[0][1]],
                                       align[1, un_range[1][0]:un_range[1][1]]]
-                uni_aln = mafft_align(uni_aln_seqrecords)
+                uni_aln = align_sequences(uni_aln_seqrecords, **kwargs)
 
                 write_pairwise(uni_aln, path + orf_name + '_subalignment_' + str(u) + '.fa')
-                uni_trans = translate_alignment(uni_aln)
+                uni_trans = translate_alignment(uni_aln, **kwargs)
                 write_pairwise(uni_trans, path + orf_name + '_AATranslation_' + str(u) + '.fa')
                 orf_file = open(path + orf_name + '_orf_aa_' + str(u) + '.fa', 'w')
                 if len(int_trans) == 1 or len(int_aln) == 1 or len(uni_trans) == 1 or len(uni_aln) == 1:
@@ -496,8 +508,8 @@ def find_homologs(align, ref_seq_id, ref_range, orf_name, out_path='./'):
                     os.remove(path + orf_name + '_orf_aa_' + str(u) + '.fa')
 
 
-def main(path, orf_name, yeast_fname, is_annotated, is_aligned, align_pairwise):
-
+def main(path, orf_name, yeast_fname, is_annotated, is_aligned, align_pairwise, **kwargs):
+    #algorithm=kwargs.pop('algorithm','mafft')
     print(orf_name)
     #    start = 2754
     #    end = 2918
@@ -542,7 +554,7 @@ def main(path, orf_name, yeast_fname, is_annotated, is_aligned, align_pairwise):
                 continue
 
             start, end = get_subalignment([ref_seq_record, record], str(orf_seq),
-                                          path, orf_name, is_aligned=is_aligned)
+                                          path, orf_name, is_aligned=is_aligned, **kwargs)
             aln_file_name = [s for s in os.listdir(path) if '_subalignment_extended_' + record.id in s][0]
             align = AlignIO.read(path + '/' + aln_file_name, 'fasta')
             try:
@@ -552,10 +564,10 @@ def main(path, orf_name, yeast_fname, is_annotated, is_aligned, align_pairwise):
 
 
             find_homologs(align=align, ref_seq_id=ref_seq_id, ref_range=[start, end], orf_name=orf_name,
-                          out_path=path)
+                          out_path=path, **kwargs)
     else:
         start, end = get_subalignment(path + '/' + filename, str(orf_seq),
-                                      path, orf_name, is_aligned=is_aligned)
+                                      path, orf_name, is_aligned=is_aligned, **kwargs)
         aln_file_name = [s for s in os.listdir(path) if '_alignment_muscle' in s][0]
         align = AlignIO.read(path + '/' + aln_file_name, 'fasta')
         try:
@@ -564,7 +576,7 @@ def main(path, orf_name, yeast_fname, is_annotated, is_aligned, align_pairwise):
             print('Reference sequence name is not in the alignment')
 
         find_homologs(align=align, ref_seq_id=ref_seq_id, ref_range=[start, end], orf_name=orf_name,
-                      out_path=path)
+                      out_path=path, **kwargs)
         # ss = []
     analysis.main(path, orf_name, yeast_fname, is_annotated, align_pairwise)
 
@@ -577,18 +589,21 @@ if __name__ == '__main__':
                         default=True)
     parser.add_argument('-y', action='store', dest='yeast',
                         help='Fasta file containing dna sequence for annotated yeast genes', required=True)
-    parser.add_argument('-m', action='store_true', dest='is_aligned', help='is the input alignment is already aligned?')
+    parser.add_argument('-m', action='store_true', dest='is_aligned', help='is the input alignment already aligned?')
     parser.add_argument('-ap', action='store_true', dest='align_pairwise', help='Use only pairwise alignments for faster analysis.')
+    parser.add_argument('-alg', action='store', dest='algorithm', help='Select alignment algorithm. Default is mafft', default='mafft')
 
     #    parser.add_argument('')
     res = parser.parse_args()
     path = res.path
     orf_name = res.orf_name
-    yeast_fname = res.yeast
+    yeast_fname = res.yeast    
     is_annotated = res.is_annotated
     is_aligned = res.is_aligned
     align_pairwise = res.align_pairwise
-    main(path, orf_name, yeast_fname, is_annotated, is_aligned, align_pairwise)
+    algorithm = res.algorithm
+    #print(algorithm)
+    main(path, orf_name, yeast_fname, is_annotated, is_aligned, align_pairwise, algorithm=algorithm)
 
     #main('data/YPR204W/', 'YPR204W', 'data/orf_genomic_all.fasta', True, False, True)
     #main('data/0_10090_10398_0', '0_10090_10398_0', 'data/0_10090_10398_0/0_10090_10398_0_sequence.fa', False, False, True)

@@ -109,7 +109,7 @@ def subalignment_analysis(path, align_pairwise, ref_id='Scer'):
 
 def subalignment_dna_id(path, align_pairwise, ref_id='Scer'):
     if align_pairwise:
-        sub_dna_filenames = [s for s in os.listdir(path) if '_subalignment' in s]
+        sub_dna_filenames = [s for s in os.listdir(path) if '_subalignment' in s and 'extended' not in s]
         df = pd.DataFrame()
         for fname in sub_dna_filenames:
             sub_dna = AlignIO.read(path + '/' + fname, 'fasta')
