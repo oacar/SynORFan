@@ -421,7 +421,7 @@ def find_homologs(align, ref_seq_id, ref_range, orf_name, out_path='./',**kwargs
         if i == ref_seq_id:
             continue
 
-        pairwise_aln = MultipleSeqAlignment([align[i], align[ref_seq_id]])
+        pairwise_aln = MultipleSeqAlignment([align[ref_seq_id], align[i]])
         spec_name = align[i].id
         path = out_path + '/' + spec_name + '/'
         if os.path.isdir(path) is False:
@@ -438,7 +438,7 @@ def find_homologs(align, ref_seq_id, ref_range, orf_name, out_path='./',**kwargs
 
         new_ref_start = ref_range[0]  # min(1000, ref_range[0])
         new_ref_stop = ref_range[1]  # new_ref_start + ref_range[1] - ref_range[0] + 1
-        oor = find_overlapping_orf_ranges(aln_sub[0].seq,
+        oor = find_overlapping_orf_ranges(aln_sub[1].seq,
                                           new_ref_start, new_ref_stop)
         new_ref_range = [new_ref_start, new_ref_stop]
         if oor is None:
@@ -454,24 +454,28 @@ def find_homologs(align, ref_seq_id, ref_range, orf_name, out_path='./',**kwargs
 
                 if itr[0] < new_ref_range[0]:
                     new_un_range_start = get_correct_frame(align[ref_seq_id, :].seq, un_range, new_ref_range[0])
-                    un_range = np.append([un_range], [[new_un_range_start, un_range[1]]], axis=0)
+                    un_range = np.append([[new_un_range_start, un_range[1]]], [un_range], axis=0)
+
                 elif itr[0] > new_ref_range[0]:
                     new_un_range_start = get_correct_frame(align[i, :].seq, un_range, itr[0])
-                    un_range = np.append([[new_un_range_start, un_range[1]]], [un_range], axis=0)
+                    un_range = np.append([un_range], [[new_un_range_start, un_range[1]]], axis=0)
+
                 else:
                     un_range = np.append([un_range], [un_range], axis=0)
 
                 int_range = intersect_range(itr, new_ref_range)
                 if itr[0] > new_ref_range[0]:
                     new_int_range_start = get_correct_frame(align[ref_seq_id, :].seq, int_range, new_ref_range[0])
-                    int_range = np.append([int_range], [[new_int_range_start, int_range[1]]], axis=0)
+                    int_range = np.append([[new_int_range_start, int_range[1]]], [int_range], axis=0)
+
                 elif itr[0] < new_ref_range[0]:
                     new_int_range_start = get_correct_frame(align[i, :].seq, int_range, itr[0])
-                    int_range = np.append([[new_int_range_start, int_range[1]]], [int_range], axis=0)
+                    int_range = np.append([int_range], [[new_int_range_start, int_range[1]]], axis=0)
+
                 else:
                     int_range = np.append([int_range], [int_range], axis=0)
-                int_aln_seqrecords = [align[0, int_range[0][0]:int_range[0][1]],
-                                      align[1, int_range[1][0]:int_range[1][1]]]
+                int_aln_seqrecords = [aln_sub[0, int_range[0][0]:int_range[0][1]],
+                                      aln_sub[1, int_range[1][0]:int_range[1][1]]]
                 int_aln = align_sequences(int_aln_seqrecords, **kwargs)
 
                 write_pairwise(int_aln, path + orf_name + '_subalignment_overlap_' + str(u) + '.fa')
@@ -479,8 +483,8 @@ def find_homologs(align, ref_seq_id, ref_range, orf_name, out_path='./',**kwargs
                 int_trans = translate_alignment(int_aln, **kwargs)
                 write_pairwise(int_trans, path + orf_name + '_AATranslation_overlap_' + str(u) + '.fa')
 
-                uni_aln_seqrecords = [align[0, un_range[0][0]:un_range[0][1]],
-                                      align[1, un_range[1][0]:un_range[1][1]]]
+                uni_aln_seqrecords = [aln_sub[0, un_range[0][0]:un_range[0][1]],
+                                      aln_sub[1, un_range[1][0]:un_range[1][1]]]
                 uni_aln = align_sequences(uni_aln_seqrecords, **kwargs)
 
                 write_pairwise(uni_aln, path + orf_name + '_subalignment_' + str(u) + '.fa')
@@ -593,16 +597,23 @@ if __name__ == '__main__':
     parser.add_argument('-ap', action='store_true', dest='align_pairwise', help='Use only pairwise alignments for faster analysis.')
     parser.add_argument('-alg', action='store', dest='algorithm', help='Select alignment algorithm. Default is mafft', default='mafft')
 
-    #    parser.add_argument('')
+       #parser.add_argument('')
     res = parser.parse_args()
     path = res.path
     orf_name = res.orf_name
-    yeast_fname = res.yeast    
+    yeast_fname = res.yeast
     is_annotated = res.is_annotated
     is_aligned = res.is_aligned
     align_pairwise = res.align_pairwise
     algorithm = res.algorithm
     #print(algorithm)
+    # path = 'data/YBR196C-A_ap/'
+    # orf_name = 'YBR196C-A'
+    # yeast_fname = 'data/orf_genomic_all.fasta'
+    # is_annotated= True
+    # is_aligned= False
+    # align_pairwise = True
+    # algorithm = 'mafft'
     main(path, orf_name, yeast_fname, is_annotated, is_aligned, align_pairwise, algorithm=algorithm)
 
     #main('data/YPR204W/', 'YPR204W', 'data/orf_genomic_all.fasta', True, False, True)
