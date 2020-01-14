@@ -60,10 +60,11 @@ def pairwise_analyze(path, id):
         overlap_dna_file = [s for s in os.listdir(path) if 'subalignment_overlap_' + str(id) + '.fa' in s][0]
         overlap_dna = AlignIO.read(path + '/' + overlap_dna_file, 'fasta')
 
-        union_aa_file = [s for s in os.listdir(path) if 'subalignment_' + str(id) + '.fa' in s][0]
+        union_dna_file = [s for s in os.listdir(path) if 'subalignment_' + str(id) + '.fa' in s][0]
+        union_aa_file = [s for s in os.listdir(path) if 'AATranslation_' + str(id) + '.fa' in s][0]
+
         union_aa = AlignIO.read(path + '/' + union_aa_file, 'fasta')
 
-        union_dna_file = [s for s in os.listdir(path) if 'AATranslation_' + str(id) + '.fa' in s][0]
         union_dna = AlignIO.read(path + '/' + union_dna_file, 'fasta')
         orf_aa_file = [s for s in os.listdir(path) if 'orf_aa_' + str(id) + '.fa' in s][0]
         orf_aa = AlignIO.read(path + '/' + orf_aa_file, 'fasta')
