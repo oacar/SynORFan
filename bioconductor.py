@@ -3,7 +3,7 @@ import argparse
 import re
 import subprocess
 import sys
-
+import tempfile
 import numpy as np
 from Bio import AlignIO
 from Bio import SeqIO
@@ -32,17 +32,18 @@ def mafft_align(input_seq,**kwargs):
     :param input_seq:
     :return:
     """
-    tf = open('tmp.fa', 'w')
-    SeqIO.write(input_seq, tf, 'fasta')
-    mafft_cline = MafftCommandline(input='tmp.fa')
-    tf.close()
+    tf = tempfile.NamedTemporaryFile(mode='w',dir='/home/oma21/tmp/')
+    #tf = open('tmp.fa', 'w')
+    SeqIO.write(input_seq, tf.name, 'fasta')
+    mafft_cline = MafftCommandline(input=tf.name)
     stdout, stderr = mafft_cline()
-    if os.path.isfile('tmp.fa'):
-        os.remove('tmp.fa')
+    tf.close()
+
     if len(stdout) == 0:
         raise ValueError(stderr)
     aligned_seq = AlignIO.read(StringIO(stdout), 'fasta')
     return aligned_seq
+
 
 
 
@@ -563,6 +564,7 @@ def use_pairwise_extended(path, orf_name, yeast_fname, is_annotated, is_aligned,
             re_smorf = re.compile("[-]*".join(str(orf_seq)), re.IGNORECASE)
 
             res = re_smorf.search(str(align[0].seq))
+            #print(align)
             if res is None:
                 print(orf_name + ' is not found in alignment')
                 raise ValueError
