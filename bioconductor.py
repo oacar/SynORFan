@@ -13,7 +13,8 @@ from Bio.Align.Applications import MuscleCommandline, MafftCommandline
 from Bio.Application import ApplicationError
 from Bio.SeqRecord import SeqRecord
 import analysis
-
+from os.path import expanduser
+home = expanduser("~")
 
 def align_sequences(input_seq, **kwargs):
     algorithm = kwargs.pop('algorithm')
@@ -32,7 +33,8 @@ def mafft_align(input_seq,**kwargs):
     :param input_seq:
     :return:
     """
-    tf = tempfile.NamedTemporaryFile(mode='w',dir='/home/oma21/tmp/')
+
+    tf = tempfile.NamedTemporaryFile(mode='w',dir=f'{home}/tmp/')
     #tf = open('tmp.fa', 'w')
     SeqIO.write(input_seq, tf.name, 'fasta')
     mafft_cline = MafftCommandline(input=tf.name)
