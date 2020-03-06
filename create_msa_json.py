@@ -42,6 +42,7 @@ def parallel_msa_read(args):
     orf.add_msa(readFiles.Msa(orf_name, combine_sequences(seqs_dna),_type='dna'))
     #orf_dict[orf.__dict__['name']] = orf.__dict__
     return {orf.__dict__['name']: orf.__dict__}
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', action="store", dest='path', help='Directory path for results folder',
@@ -51,6 +52,7 @@ def main():
 
     #path = 'data/python_analysis/gene_all_1009/'
     res = parser.parse_args()
+def create_msa_json(res):
     fls = sorted(os.listdir(res.path))
 
     orf_names = [u.split('_')[0] for u in fls]

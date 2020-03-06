@@ -269,10 +269,10 @@ def readOrfData(path, orf_name, yeast_fname, is_annotated, align_pairwise):
             orf.add_pairwise(overlap_aa)
             orf.add_pairwise(overlap_dna)
             #df = df.join(pairwise_analyze(path + '/' + folder + '/', i))
-    msa_dna = Msa(orf_name, read_subalignment(path, align_pairwise, aa=False), _type = 'dna')
-    msa_aa = Msa(orf_name, read_subalignment(path, align_pairwise, aa=True), _type='aa')
-    orf.add_msa(msa_dna)
-    orf.add_msa(msa_aa)
+    #msa_dna = Msa(orf_name, read_subalignment(path, align_pairwise, aa=False), _type = 'dna')
+    #msa_aa = Msa(orf_name, read_subalignment(path, align_pairwise, aa=True), _type='aa')
+    #orf.add_msa(msa_dna)
+    #orf.add_msa(msa_aa)
 
     return(orf.__dict__)
     # return df
