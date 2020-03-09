@@ -660,7 +660,7 @@ if __name__ == '__main__':
     parser.add_argument('-p', action="store", dest='path', help='Directory path for alignment and output folder',
                         required=True)
     parser.add_argument('-n', action="store", dest='orf_name', help='ORF name for output names', required=True)
-    parser.add_argument('-a', action='store_false', dest='is_annotated', help='Is the sequence is annotated?',
+    parser.add_argument('-a', action='store_true', dest='is_annotated', help='Is the sequence is annotated?',
                         default=True)
     parser.add_argument('-y', action='store', dest='yeast',
                         help='Fasta file containing dna sequence for annotated yeast genes', required=True)

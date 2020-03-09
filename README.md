@@ -23,4 +23,7 @@ optional arguments:
 
 ## Example Usage:
 ```
-python bioconductor.py -p input_folder/ -n YBR196C-A -y orf_genomic_all.fasta -ap  
+python bioconductor.py -p input_folder/ -n YBR196C-A -y orf_genomic_all.fasta -ap -a
+
+## Requirements:
+Python requirements are in `requirements.txt` file however you also need mafft to be on your system path and a tmp folder on your Home folder.(i.e. $HOME/tmp/ should be available) 
