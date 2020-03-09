@@ -3,7 +3,7 @@ import argparse
 import re
 import subprocess
 import sys
-
+import tempfile
 import numpy as np
 from Bio import AlignIO
 from Bio import SeqIO
@@ -13,7 +13,8 @@ from Bio.Align.Applications import MuscleCommandline, MafftCommandline
 from Bio.Application import ApplicationError
 from Bio.SeqRecord import SeqRecord
 import analysis
-
+from os.path import expanduser
+home = expanduser("~")
 
 def align_sequences(input_seq, **kwargs):
     algorithm = kwargs.pop('algorithm')
@@ -32,17 +33,19 @@ def mafft_align(input_seq,**kwargs):
     :param input_seq:
     :return:
     """
-    tf = open('tmp.fa', 'w')
-    SeqIO.write(input_seq, tf, 'fasta')
-    mafft_cline = MafftCommandline(input='tmp.fa')
-    tf.close()
+
+    tf = tempfile.NamedTemporaryFile(mode='w',dir=f'{home}/tmp/')
+    #tf = open('tmp.fa', 'w')
+    SeqIO.write(input_seq, tf.name, 'fasta')
+    mafft_cline = MafftCommandline(input=tf.name)
     stdout, stderr = mafft_cline()
-    if os.path.isfile('tmp.fa'):
-        os.remove('tmp.fa')
+    tf.close()
+
     if len(stdout) == 0:
         raise ValueError(stderr)
     aligned_seq = AlignIO.read(StringIO(stdout), 'fasta')
     return aligned_seq
+
 
 
 
@@ -148,7 +151,7 @@ def get_subalignment(input_seq, smorfSeq, outputDirectory, orf_name, is_aligned=
 
             subalign_file = open(outputDirectory + '/' + orf_name + '_subalignment_extended.fa', 'w')
             AlignIO.write(subalign, subalign_file, 'fasta')
-            res = re_smorf.search(str(subalign_seq[ref_seq_id].seq))
+            res = re_smorf.search(str(subalign[ref_seq_id].seq))
             if res is None:
                 print(orf_name + ' is not found in alignment')
                 raise ValueError
@@ -511,6 +514,74 @@ def find_homologs(align, ref_seq_id, ref_range, orf_name, out_path='./',**kwargs
                 if os.path.exists(path + orf_name + '_orf_aa_' + str(u) + '.fa'):
                     os.remove(path + orf_name + '_orf_aa_' + str(u) + '.fa')
 
+def use_pairwise_extended(path, orf_name, yeast_fname, is_annotated, is_aligned, align_pairwise, **kwargs):
+    #algorithm=kwargs.pop('algorithm','mafft')
+    print(orf_name)
+    #    start = 2754
+    #    end = 2918
+
+    #        path = 'data/pgs/YLL059C_2/'
+    #        orf_name = 'YLL059C'
+    #        yeast_fname = 'data/orf_genomic_all.fasta'
+    #        is_annotated = True
+    if is_aligned:
+        filename = [s for s in os.listdir(path) if 'muscle.fa' in s][0]
+    else:
+        filename = [s for s in os.listdir(path) if '_alignment.fa' in s][0]
+    # mcl = MuscleCommandline(input='data/ybr_deneme/YBR196C-A_alignment.fa',out = 'data/ybr_deneme/YBR196C-A_alignment_muscle.fa')
+    # find_best_overlap_id('data/ybr_deneme/Spar')
+    aln = SeqIO.parse(path + '/' + filename,'fasta')
+    maxlen = 0
+    for rec in aln:
+        l = len(rec.seq)
+        if l > maxlen:
+            maxlen = l
+    #    if maxlen>100000:
+    #        return 0
+    orf_seq = None
+    if is_annotated:
+        yeast = SeqIO.parse(yeast_fname, 'fasta')
+        for record in yeast:
+            if record.id == orf_name:
+                orf_seq = record.seq
+        if orf_seq is None:
+            print(orf_name + ' is not found in ' + yeast_fname)
+            return (0)
+    else:
+        yeast = SeqIO.parse(yeast_fname, 'fasta')
+        for record in yeast:
+            orf_seq = record.seq
+    if align_pairwise:
+        msa_file = list(SeqIO.parse(path + '/' + filename, 'fasta'))
+        ref_seq_record = [rec for rec in msa_file if rec.id == 'Scer'][0]
+
+        for record in msa_file:
+            if record.id == 'Scer' or len(record.seq) == 0:
+                continue
+
+            # start, end = get_subalignment([ref_seq_record, record], str(orf_seq),
+            #                               path, orf_name, is_aligned=is_aligned, **kwargs)
+            aln_file_name = [s for s in os.listdir(path) if '_subalignment_extended_' + record.id in s][0]
+            align = AlignIO.read(path + '/' + aln_file_name, 'fasta')
+            re_smorf = re.compile("[-]*".join(str(orf_seq)), re.IGNORECASE)
+
+            res = re_smorf.search(str(align[0].seq))
+            #print(align)
+            if res is None:
+                print(orf_name + ' is not found in alignment')
+                raise ValueError
+            start = res.start()
+            end = res.end()
+            try:
+                ref_seq_id = [i for i, rec in enumerate(align) if rec.id == 'Scer'][0]
+            except IndexError:
+                print('Reference sequence name is not in the alignment')
+
+
+            find_homologs(align=align, ref_seq_id=ref_seq_id, ref_range=[start, end], orf_name=orf_name,
+                          out_path=path, **kwargs)
+    
+    analysis.main(path, orf_name, yeast_fname, is_annotated, align_pairwise)
 
 def main(path, orf_name, yeast_fname, is_annotated, is_aligned, align_pairwise, **kwargs):
     #algorithm=kwargs.pop('algorithm','mafft')
