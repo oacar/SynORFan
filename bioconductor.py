@@ -664,8 +664,8 @@ if __name__ == '__main__':
                         default=True)
     parser.add_argument('-y', action='store', dest='yeast',
                         help='Fasta file containing dna sequence for annotated yeast genes', required=True)
-    parser.add_argument('-m', action='store_true', dest='is_aligned', help='is the input alignment already aligned?')
-    parser.add_argument('-ap', action='store_true', dest='align_pairwise', help='Use only pairwise alignments for faster analysis.')
+    #parser.add_argument('-m', action='store_true', dest='is_aligned', help='is the input alignment already aligned?')
+    #parser.add_argument('-ap', action='store_true', dest='align_pairwise', help='Use only pairwise alignments for faster analysis.')
     parser.add_argument('-alg', action='store', dest='algorithm', help='Select alignment algorithm. Default is mafft', default='mafft')
 
        #parser.add_argument('')
@@ -674,8 +674,8 @@ if __name__ == '__main__':
     orf_name = res.orf_name
     yeast_fname = res.yeast
     is_annotated = res.is_annotated
-    is_aligned = res.is_aligned
-    align_pairwise = res.align_pairwise
+    is_aligned = False #res.is_aligned
+    align_pairwise = True #res.align_pairwise
     algorithm = res.algorithm
     #print(algorithm)
     # path = 'data/YBR196C-A_ap/'

@@ -8,20 +8,21 @@ python bioconductor.py --help
 will give you the options and input files needed to use this program.
 
 ```
-usage: bioconductor.py [-h] -p PATH -n ORF_NAME [-a] -y YEAST [-m] [-ap]
+usage: bioconductor.py [-h] -p PATH -n ORF_NAME [-a] -y YEAST [-alg ALGORITHM]
 
 optional arguments:
-  -h, --help   show this help message and exit
-  -p PATH      Directory path for alignment and output folder
-  -n ORF_NAME  ORF name for output names
-  -a           Is the sequence is annotated?
-  -y YEAST     Fasta file containing dna sequence for annotated yeast genes
+  -h, --help      show this help message and exit
+  -p PATH         Directory path for alignment and output folder
+  -n ORF_NAME     ORF name for output names
+  -a              Is the sequence is annotated?
+  -y YEAST        Fasta file containing dna sequence for annotated yeast genes
+  -alg ALGORITHM  Select alignment algorithm. Default is mafft
 ```
 
 
 ## Example Usage:
 ```
-python bioconductor.py -p input_folder/ -n YBR196C-A -y orf_genomic_all.fasta -ap -a
+python bioconductor.py -p input_folder/ -n YBR196C-A -y orf_genomic_all.fasta -a
 ```
 
 ## Requirements:

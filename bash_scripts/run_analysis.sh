@@ -10,7 +10,7 @@ then
 #    python ../../../bioconductor.py -p $i -n $name -y ../../orf_genomic_all.fasta -m
     continue
 else
-    python ../../../bioconductor.py -p $i -n $name -y ../../orf_genomic_all.fasta -ap -a 
+    python ../../../bioconductor.py -p $i -n $name -y ../../orf_genomic_all.fasta -a 
 fi
 
 #python ../../analysis.py -p $i -n $name
