@@ -16,14 +16,14 @@ optional arguments:
   -n ORF_NAME  ORF name for output names
   -a           Is the sequence is annotated?
   -y YEAST     Fasta file containing dna sequence for annotated yeast genes
-  -m           is the input alignment is already aligned?
-  -ap          Use only pairwise alignments for faster analysis.
 ```
 
 
 ## Example Usage:
 ```
 python bioconductor.py -p input_folder/ -n YBR196C-A -y orf_genomic_all.fasta -ap -a
+```
 
 ## Requirements:
 Python requirements are in `requirements.txt` file however you also need mafft to be on your system path and a tmp folder on your Home folder.(i.e. $HOME/tmp/ should be available) 
+-y argument needs `orf_genomic_all.fasta` file which can be downloaded from SGD for yeast to get the sequence if -a is specified or the ORF sequence can be given directly to -y. 
