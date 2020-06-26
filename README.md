@@ -22,7 +22,7 @@ optional arguments:
 
 ## Example Usage:
 ```
-python bioconductor.py -p input_folder/ -n YBR196C-A -y orf_genomic_all.fasta -a
+python bioconductor.py -p input_data/ -n YBR196C-A -y input_data/orf_genomic_all.fasta -a
 ```
 
 ## Requirements:
