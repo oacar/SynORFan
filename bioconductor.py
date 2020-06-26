@@ -17,7 +17,7 @@ from os.path import expanduser
 home = expanduser("~")
 
 def align_sequences(input_seq, **kwargs):
-    algorithm = kwargs.pop('algorithm')
+    algorithm = kwargs.pop('algorithm','mafft')
     #print(algorithm)
     if algorithm=='mafft':
         aln = mafft_align(input_seq)
@@ -36,6 +36,7 @@ def mafft_align(input_seq,**kwargs):
 
     tf = tempfile.NamedTemporaryFile(mode='w',dir=f'{home}/tmp/')
     #tf = open('tmp.fa', 'w')
+    
     SeqIO.write(input_seq, tf.name, 'fasta')
     mafft_cline = MafftCommandline(input=tf.name)
     stdout, stderr = mafft_cline()
@@ -89,7 +90,7 @@ def translate_alignment(aln,**kwargs):
     return aa_translation
 
 
-def get_subalignment(input_seq, smorfSeq, outputDirectory, orf_name, is_aligned=False,**kwargs):
+def get_subalignment(input_seq, smorfSeq, outputDirectory, orf_name, is_aligned=False,sub_extended = True,write_files = True,**kwargs):
     """
     This function takes a series of sequences, aligns them and finds a sequence on the reference sequences.
     Then extracts subalignment and translate it. Saves these files.
@@ -111,16 +112,19 @@ def get_subalignment(input_seq, smorfSeq, outputDirectory, orf_name, is_aligned=
             input_seqs = SeqIO.parse(input_seq, 'fasta')
             align = align_sequences(input_seqs,**kwargs)
             ref_seq_id = [i for i, rec in enumerate(align) if rec.id == 'Scer'][0]
-            align_file = open(outputDirectory + '/' + orf_name + '_alignment_muscle.fa', 'w')
-            AlignIO.write(align, align_file, 'fasta')
+            
+            if write_files:
+                align_file = open(outputDirectory + '/' + orf_name + '_alignment_muscle.fa', 'w')
+                AlignIO.write(align, align_file, 'fasta')
     else:
         input_seqs = input_seq
         align = align_sequences(input_seqs, **kwargs)
 
         ref_seq_id = [i for i, rec in enumerate(align) if rec.id == 'Scer'][0]
         other_name = [rec.id for rec in align if rec.id != 'Scer'][0]
-        align_file = open(outputDirectory + '/' + orf_name + '_alignment_' + other_name + '.fa', 'w')
-        AlignIO.write(align, align_file, 'fasta')
+        if write_files:
+            align_file = open(outputDirectory + '/' + orf_name + '_alignment_' + other_name + '.fa', 'w')
+            AlignIO.write(align, align_file, 'fasta')
     # smorf = Seq('ATGTCCCGTG')
 
     re_smorf = re.compile("[-]*".join(smorfSeq), re.IGNORECASE)
@@ -131,7 +135,7 @@ def get_subalignment(input_seq, smorfSeq, outputDirectory, orf_name, is_aligned=
         raise ValueError
     start = res.start()
     end = res.end()
-    sub_extended = True
+    
     if isinstance(input_seq, str):
         subalign_seq = align[:, start:end]
 
@@ -148,9 +152,9 @@ def get_subalignment(input_seq, smorfSeq, outputDirectory, orf_name, is_aligned=
             subalign_seq = align[:, max(start - 1000, 0):min(end + 1000, len(align[0]))]
 
             subalign = align_sequences(subalign_seq, **kwargs)
-
-            subalign_file = open(outputDirectory + '/' + orf_name + '_subalignment_extended.fa', 'w')
-            AlignIO.write(subalign, subalign_file, 'fasta')
+            if write_files:
+                subalign_file = open(outputDirectory + '/' + orf_name + '_subalignment_extended.fa', 'w')
+                AlignIO.write(subalign, subalign_file, 'fasta')
             res = re_smorf.search(str(subalign[ref_seq_id].seq))
             if res is None:
                 print(orf_name + ' is not found in alignment')
@@ -163,19 +167,19 @@ def get_subalignment(input_seq, smorfSeq, outputDirectory, orf_name, is_aligned=
         subalign = align_sequences(subalign_seq, **kwargs)
 
         aa_translation = translate_alignment(subalign, **kwargs)
+        if write_files:
+            subalign_file = open(outputDirectory + '/' + orf_name + '_subalignment_' + other_name + '.fa', 'w')
+            AlignIO.write(subalign, subalign_file, 'fasta')
 
-        subalign_file = open(outputDirectory + '/' + orf_name + '_subalignment_' + other_name + '.fa', 'w')
-        AlignIO.write(subalign, subalign_file, 'fasta')
-
-        aa_file = open(outputDirectory + '/' + orf_name + '_AATranslation_' + other_name + '.fa', 'w')
-        AlignIO.write(aa_translation, aa_file, 'fasta')
+            aa_file = open(outputDirectory + '/' + orf_name + '_AATranslation_' + other_name + '.fa', 'w')
+            AlignIO.write(aa_translation, aa_file, 'fasta')
         if sub_extended:
             subalign_seq = align[:, max(start - 1000, 0):min(end + 2000, len(align[0]))]
 
             subalign = align_sequences(subalign_seq, **kwargs)
-
-            subalign_file = open(outputDirectory + '/' + orf_name + '_subalignment_extended_'+other_name+'.fa', 'w')
-            AlignIO.write(subalign, subalign_file, 'fasta')
+            if write_files:
+                subalign_file = open(outputDirectory + '/' + orf_name + '_subalignment_extended_'+other_name+'.fa', 'w')
+                AlignIO.write(subalign, subalign_file, 'fasta')
             res = re_smorf.search(str(subalign_seq[ref_seq_id].seq))
             if res is None:
                 print(orf_name + ' is not found in alignment')
@@ -583,6 +587,21 @@ def use_pairwise_extended(path, orf_name, yeast_fname, is_annotated, is_aligned,
     
     analysis.main(path, orf_name, yeast_fname, is_annotated, align_pairwise)
 
+def combine_separate_files(path,orf_name,fname_ext):
+    fls = [f for f in os.listdir(path) if f'_{fname_ext}_' in f and 'extended' not in f]
+    alignment_files = [AlignIO.read(f"{path}/{f}",'fasta') for f in fls]
+    first_ = [i for i in alignment_files[0]]
+    first_.extend([i[1] for i in alignment_files[1:]])
+    aligned_seq = align_sequences(first_)
+    align_file = open(path + '/' + orf_name + '_' + fname_ext+ '.fa', 'w')
+    AlignIO.write(aligned_seq, align_file, 'fasta')
+#for i in ['YBL029W-B','YJR107C-A']:
+    #for j in ['alignment','subalignment','AATranslation']:
+        #combine_separate_files(f"{i}/",i,j)
+
+#[s for s in os.listdir(path) if '_subalignment_extended_' + record.id in s][0]
+    
+
 def main(path, orf_name, yeast_fname, is_annotated, is_aligned, align_pairwise, **kwargs):
     #algorithm=kwargs.pop('algorithm','mafft')
     print(orf_name)
@@ -660,8 +679,7 @@ if __name__ == '__main__':
     parser.add_argument('-p', action="store", dest='path', help='Directory path for alignment and output folder',
                         required=True)
     parser.add_argument('-n', action="store", dest='orf_name', help='ORF name for output names', required=True)
-    parser.add_argument('-a', action='store_true', dest='is_annotated', help='Is the sequence is annotated?',
-                        default=True)
+    parser.add_argument('-a', action='store_true', dest='is_annotated', help='Is the sequence is annotated?')#                        default=True)
     parser.add_argument('-y', action='store', dest='yeast',
                         help='Fasta file containing dna sequence for annotated yeast genes', required=True)
     #parser.add_argument('-m', action='store_true', dest='is_aligned', help='is the input alignment already aligned?')
