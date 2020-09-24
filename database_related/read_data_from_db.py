@@ -64,5 +64,31 @@ def main(path,orf_name):
     return 0
 
 
+def main_multi(folder_path, list_of_orfs):
+    engine_paris = create_engine('mysql+mysqldb://oma21:dktgp2750@127.0.0.1:3306/omer')
+    for i in tqdm(list_of_orfs):
+        orf_name = i
+        path = f"{folder_path}/{orf_name}/"
+        print(orf_name)
+        msa_query = f"""select * from msa where orf_name='{orf_name}'"""
+        pairwise_query=f"""select * from pairwise_best where orf_name='{orf_name}'"""
+        pairwise_data = pd.read_sql_query(pairwise_query, engine_paris)
+        msa_data = pd.read_sql_query(msa_query, engine_paris)
+
+        #print(msa_data)
+        #print(pairwise_data)
+        species = np.union1d(pairwise_data.species2.unique(),msa_data.species.unique())
+        for s in species:
+            if os.path.isdir(path+'/'+s) is False:
+                try:
+                    os.mkdir(path+'/'+s)
+                except OSError:
+                    print("Creation of the directory %s failed" % path)
+                else:
+                    print("Successfully created the directory %s " % path)
+        writeMsa(msa_data,path,orf_name)
+        writePairwise(pairwise_data,path,orf_name)
+    engine_paris.dispose()
+
 if __name__=='__main__':
     main('read_db_deneme','YGR146C-A')

@@ -15,7 +15,7 @@ def run_tmhmm(input_seq):
     :param input_seq: SeqRecord or AlignIO object
     :return: numpy array with start and stop positions
     """
-    tmhmm_cline = 'tmhmm'
+    tmhmm_cline = '/home/oma21/.local/bin/tmhmm'
     res = np.empty((0, 2))
     child = subprocess.Popen(str(tmhmm_cline),
                              stdin=subprocess.PIPE,
@@ -43,5 +43,5 @@ def run_tmhmm(input_seq):
 
 
 #seq = AlignIO.read("data/YBR196C-A/Spar/YBR196C-A_AATranslation_Spar_best.fa", 'fasta')
-#res = run_tmhmm(SeqRecord(Seq('MRRRRRMRRRR'), id='s'))
+#res = run_tmhmm(seq[1])
 #print(res)

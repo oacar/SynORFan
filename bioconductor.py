@@ -118,7 +118,10 @@ def get_subalignment(input_seq, smorfSeq, outputDirectory, orf_name, is_aligned=
                 AlignIO.write(align, align_file, 'fasta')
     else:
         input_seqs = input_seq
-        align = align_sequences(input_seqs, **kwargs)
+        if is_aligned :
+            align = input_seqs
+        else:
+            align = align_sequences(input_seqs, **kwargs)
 
         ref_seq_id = [i for i, rec in enumerate(align) if rec.id == 'Scer'][0]
         other_name = [rec.id for rec in align if rec.id != 'Scer'][0]
